@@ -36,13 +36,14 @@ main{max-width:520px;margin:0 auto;padding:14px 14px 40px}
 .sheet label{display:block;font-size:13px;color:var(--mu);margin:10px 0 4px}
 .sheet input{width:100%;font-size:20px;padding:12px;border-radius:12px;border:1px solid var(--ln);background:var(--bg);color:var(--tx)}
 .sheet .b{display:flex;gap:8px;margin-top:16px}.sheet .p{background:var(--bl);color:#fff;border:0}.sheet .d{color:var(--rd)}
-.note{font-size:12px;color:var(--mu);text-align:center;margin-top:10px}
+.cg{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}.sheet label.ck{display:flex;align-items:center;font-size:16px;color:var(--tx);margin:6px 0}.sheet input[type=checkbox]{width:22px;height:22px;padding:0;margin:0 10px 0 0;flex:none}.err{color:var(--rd);font-size:14px;min-height:18px;margin-top:8px}.sheet select{width:100%;font-size:18px;padding:12px;border-radius:12px;border:1px solid var(--ln);background:var(--bg);color:var(--tx)}.note{font-size:12px;color:var(--mu);text-align:center;margin-top:10px}
 </style></head><body><main>
 <div class="card clock"><div class="day" id="today"></div><div class="time" id="now"></div><div class="status" id="status"></div><button class="big" id="btn"><span class="fill" id="fill"></span><span class="lbl" id="lbl"></span></button></div>
 <div class="nav"><button id="prev" aria-label="Previous month">‹</button><b id="mlabel"></b><button id="next" aria-label="Next month">›</button></div>
 <div class="card"><div class="grid" id="stats"></div></div>
 <div class="card" id="list"></div>
-<div class="sub"><button id="add">+ Add a day</button><button id="copy">Copy backup</button></div><div class="sub"><button id="xl">⬇ Excel</button><button id="pdf">⬇ PDF</button><button id="imp">⬆ Import</button></div><input type="file" id="file" accept=".xlsx,.xls" hidden>
+<div class="sub"><button id="add">+ Add a day</button><button id="copy">Copy backup</button></div><div class="sub"><button id="clk">⚙ Settings</button></div><div class="note" id="tz"></div>
+<div class="sub"><button id="xl">⬇ Excel</button><button id="pdf">⬇ PDF</button><button id="imp">⬆ Import</button></div><input type="file" id="file" accept=".xlsx,.xls" hidden>
 <div class="note" id="msg">Goal 8 h (Mon–Fri), 4 h (Sat). Overtime is counted per day: under 50 min = 0, from 50 min it rounds up to the next hour. Late = after 09:20. Data stays on this phone, so export now and then as a backup. Exports ask whether you want everything or only the days with overtime. Tap "Mark paid" once management has paid you: that overtime stops counting.</div>
 </main>
 <div class="sheet" id="sheet"><div>
@@ -52,12 +53,38 @@ main{max-width:520px;margin:0 auto;padding:14px 14px 40px}
 <label>End (past midnight is fine)</label><input type="time" id="fe">
 <div class="b"><button class="d" id="fdel">Delete</button><button id="fcan">Cancel</button><button class="p" id="fsave">Save</button></div>
 </div></div>
+<div class="sheet" id="es"><div style="max-height:92vh;overflow:auto"><b id="et">Export</b>
+<div class="b" style="margin-top:8px"><button id="pm">Manager view</button><button id="pf">Full</button></div>
+<label>Months</label><div class="cg" id="em"></div><button id="ema" style="margin-top:6px;width:100%">All / none</button>
+<label>Days</label><select id="eo"><option value="all">All days</option><option value="ot">Only days with overtime</option></select>
+<label>Columns</label><div class="cg" id="ec"></div>
+<label class="ck"><input type="checkbox" id="etot">Month totals</label>
+<label class="ck" id="ebw"><input type="checkbox" id="eb">Backup sheet (all times, to import later)</label>
+<div class="err" id="eerr"></div>
+<div class="b"><button id="ecn">Cancel</button><button class="p" id="eok">Export</button></div></div></div>
+<div class="sheet" id="ss"><div style="max-height:92vh;overflow:auto"><b>Settings</b>
+<label>Language</label><select id="sl"><option value="en">English</option><option value="fr">Français</option></select>
+<label>Date format</label><select id="sd"><option value="dmy">Day/Month/Year (17/11/2026)</option><option value="mdy">Month/Day/Year (11/17/2026)</option><option value="iso">Year-Month-Day (2026-11-17)</option></select>
+<label>Time zone</label><select id="sz"></select>
+<label>Set the app time manually (leave empty to keep)</label><input type="time" id="st">
+<label>Overtime rule</label><select id="so"><option value="round">Ignore short overtime, round up to the hour</option><option value="exact">Ignore short overtime, count exact time</option><option value="all">Count all overtime exactly</option></select>
+<label>Minimum overtime that counts (minutes)</label><input type="number" id="sm" min="0" max="59" inputmode="numeric">
+<div class="note">Changing the rule recalculates all days.</div>
+<div class="note" id="sinfo"></div>
+<div class="b"><button id="srs">Reset time</button><button id="scn">Cancel</button><button class="p" id="ssv">Save</button></div></div></div>
 <div class="sheet" id="qs"><div><b id="qt"></b><p id="qx" style="color:var(--mu);margin:6px 0 4px"></p><div class="q" id="qb"></div></div></div>
 <script src="lib/xlsx.full.min.js"></script>
 <script src="lib/jspdf.umd.min.js"></script>
 <script src="lib/jspdf.plugin.autotable.min.js"></script>
 <script>
+var CF={lang:"en",df:"dmy",tz:"",off:0,otMode:"round",otMin:50},SW=false;
+try{var _c=JSON.parse(localStorage.getItem("pt-set")||"null");if(_c){for(var _k in _c)CF[_k]=_c[_k]}else CF.off=+localStorage.getItem("pt-off")||0}catch(e){}
+var LANG=CF.lang;
+function saveCF(){try{localStorage.setItem("pt-set",JSON.stringify(CF))}catch(e){}}
+function now(){var t=new Date(Date.now()+CF.off*60000);if(!CF.tz)return t;try{var p={};new Intl.DateTimeFormat("en-GB",{timeZone:CF.tz,hourCycle:"h23",year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric",second:"numeric"}).formatToParts(t).forEach(function(x){p[x.type]=+x.value});return new Date(p.year,p.month-1,p.day,p.hour,p.minute,p.second)}catch(e){return t}}
 var K="pointages-v1",DAYS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],MON=["January","February","March","April","May","June","July","August","September","October","November","December"];
+if(LANG=="fr"){DAYS=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];MON=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"]}
+function fmt(d,full){var D=p2(d.getDate()),M=p2(d.getMonth()+1),Y=d.getFullYear();return CF.df=="mdy"?M+"/"+D+(full?"/"+Y:""):CF.df=="iso"?(full?Y+"-":"")+M+"-"+D:D+"/"+M+(full?"/"+Y:"")}
 var GRACE=9*60+20,LATE_FROM=9*60,LATE_TO=12*60;
 var SEED=[];
 var S=load(),cur=null,editId=null;
@@ -69,7 +96,7 @@ function hm(t){return p2(t.getHours())+":"+p2(t.getMinutes())}
 function tm(s){var a=s.split(":");return+a[0]*60+ +a[1]}
 function dur(x){if(!x.e)return null;var m=tm(x.e)-tm(x.s);return m<=0?m+1440:m}
 function f(m,sign){var a=Math.abs(m),s=Math.floor(a/60)+":"+p2(a%60);return sign?(m<0?"−":"+")+s:s}
-function cnt(m){if(m<=0)return 0;var h=Math.floor(m/60);return(h+(m%60>=50?1:0))*60}
+function cnt(m){if(m<=0)return 0;var X=CF.otMin;if(CF.otMode=="all")return m;if(CF.otMode=="exact")return m>=X?m:0;var h=Math.floor(m/60);return(h+(m%60>=X?1:0))*60}
 function dt(d){var a=d.split("-");return new Date(+a[0],+a[1]-1,+a[2])}
 function goal(d){var w=dt(d).getDay();return w==0?0:w==6?240:480}
 function openShift(){var o=S.filter(function(x){return!x.e});return o.length?o[o.length-1]:null}
@@ -78,9 +105,9 @@ function days(ym){var g={};S.forEach(function(x){if(x.d.slice(0,7)!=ym)return;(g
   it.forEach(function(x){var u=dur(x);if(u===null)live=true;else{tot+=u;done=true}});
   var first=it[0],ls=tm(first.s),late=(ls>GRACE&&ls<LATE_TO)?ls-LATE_FROM:0;
   return{d:d,it:it,tot:tot,done:done,live:live,diff:done?tot-goal(d):null,cnt:done?cnt(tot-goal(d)):null,paid:it.every(function(x){return!!x.paid}),late:late,goal:goal(d)}})}
-function render(){var n=new Date();
- document.getElementById("today").textContent=DAYS[n.getDay()]+" "+p2(n.getDate())+"/"+p2(n.getMonth()+1)+"/"+n.getFullYear();
- document.getElementById("now").textContent=hm(n);
+function render(){var n=now();
+ document.getElementById("today").textContent=DAYS[n.getDay()]+" "+fmt(n,true);
+ document.getElementById("now").textContent=hm(n);try{document.getElementById("tz").textContent="Time zone: "+(CF.tz||Intl.DateTimeFormat().resolvedOptions().timeZone)+(CF.off?" · correction "+(CF.off>0?"+":"")+CF.off/60+" h":"")}catch(e){}
  var o=openShift(),b=document.getElementById("btn"),L=document.getElementById("lbl"),st=document.getElementById("status");
  if(o){var el=Math.max(0,Math.round((n-new Date(dt(o.d).getTime()+tm(o.s)*60000))/60000));
   b.className="big stop";if(!holding)L.textContent="■  Hold 5 s to END shift";st.textContent="Started "+o.s+" · "+f(el)+" so far"}
@@ -97,10 +124,10 @@ function render(){var n=new Date();
  document.getElementById("list").innerHTML=D.length?D.map(function(x){var d=dt(x.d),h="";
   x.it.forEach(function(s){h+=s.s+" → "+(s.e||"…")+"  "});
   var tags=(x.late?'<span class="tag late">Late +'+x.late+' min</span>':"")+(x.live?'<span class="tag live">In progress</span>':"")+(x.goal==240?'<span class="tag sat">4 h day</span>':"");
-  return'<div class="row" data-id="'+x.it[0].id+'"><div class="dd"><b>'+DAYS[d.getDay()]+'</b><span>'+p2(d.getDate())+"/"+p2(d.getMonth()+1)+'</span></div><div class="mid">'+h+'<small>'+(x.done?"Worked "+f(x.tot):"")+'</small>'+tags+'</div>'+ov(x)+'</div>'}).join(""):'<div class="empty">No shifts this month</div>'}
-function nowHM(){return hm(new Date())}
+  return'<div class="row" data-id="'+x.it[0].id+'"><div class="dd"><b>'+DAYS[d.getDay()]+'</b><span>'+fmt(d)+'</span></div><div class="mid">'+h+'<small>'+(x.done?"Worked "+f(x.tot):"")+'</small>'+tags+'</div>'+ov(x)+'</div>'}).join(""):'<div class="empty">No shifts this month</div>'}
+function nowHM(){return hm(now())}
 var HOLD=5000,hs=0,raf=0,holding=false,btn=document.getElementById("btn"),fill=document.getElementById("fill"),lbl=document.getElementById("lbl");
-function punch(){var o=openShift(),n=new Date();if(o){o.e=nowHM()}else{S.push({id:Date.now(),d:iso(n),s:nowHM(),e:""});cur=iso(n).slice(0,7)}save();render()}
+function punch(){var o=openShift(),n=now();if(o){o.e=nowHM()}else{S.push({id:Date.now(),d:iso(n),s:nowHM(),e:""});cur=iso(n).slice(0,7)}save();render()}
 function hstep(){var t=Date.now()-hs;if(t>=HOLD){hend();try{navigator.vibrate&&navigator.vibrate(250)}catch(e){}punch();return}fill.style.width=(t/HOLD*100)+"%";lbl.textContent="Keep holding… "+Math.ceil((HOLD-t)/1000);raf=requestAnimationFrame(hstep)}
 function hbeg(e){e.preventDefault();if(holding)return;holding=true;hs=Date.now();raf=requestAnimationFrame(hstep)}
 function hend(){if(!holding)return;holding=false;cancelAnimationFrame(raf);fill.style.width="0";render()}
@@ -108,7 +135,7 @@ btn.addEventListener("pointerdown",hbeg);["pointerup","pointercancel","pointerle
 function mv(k){var y=+cur.slice(0,4),m=+cur.slice(5,7)-1+k;var t=new Date(y,m,1);cur=t.getFullYear()+"-"+p2(t.getMonth()+1);render()}
 document.getElementById("prev").onclick=function(){mv(-1)};document.getElementById("next").onclick=function(){mv(1)};
 function sheet(x){editId=x?x.id:null;var al=x?S.filter(function(y){return y.d==x.d}).sort(function(a,b){return tm(a.s)-tm(b.s)}):[];document.getElementById("chips").innerHTML=al.length>1?al.map(function(y){return'<button data-id="'+y.id+'" class="'+(y.id===x.id?"on":"")+'">'+y.s+'</button>'}).join(""):"";document.getElementById("stitle").textContent=x?"Edit shift":"Add a shift";
- document.getElementById("fd").value=x?x.d:iso(new Date());document.getElementById("fs").value=x?x.s:"09:00";document.getElementById("fe").value=x?x.e:"";
+ document.getElementById("fd").value=x?x.d:iso(now());document.getElementById("fs").value=x?x.s:"09:00";document.getElementById("fe").value=x?x.e:"";
  document.getElementById("fdel").style.display=x?"":"none";document.getElementById("sheet").className="sheet on"}
 function close(){document.getElementById("sheet").className="sheet"}
 document.getElementById("add").onclick=function(){sheet(null)};
@@ -131,26 +158,14 @@ function fp(m,s){return f(m,s).replace("−","-")}
 function wd(d){return DAYS[dt(d).getDay()]}
 function saveFile(n,data){try{var b=new Blob([data],{type:n.slice(-3)=="pdf"?"application/pdf":"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=n;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href)},8000);say("Saved "+n+" (see your Downloads folder).")}catch(e){say("Could not save the file.")}}
 function stat(ym){var D=days(ym),ot=0,pa=0,sh=0,lt=0,wk=0;D.forEach(function(x){if(x.diff!==null){wk+=x.tot;if(x.diff>0){if(x.paid)pa+=x.cnt;else ot+=x.cnt}else sh+=x.diff}if(x.late)lt++});return{D:D,ot:ot,pa:pa,sh:sh,lt:lt,wk:wk}}
-document.getElementById("xl").onclick=function(){if(!window.XLSX){say("Excel library not loaded.");return}
- var sh=[["Date","Day","Start","End","Worked"]],dy=[["Date","Day","Worked","Goal","Overtime real","Overtime counted","Late (min)"]],ms=[["Month","Overtime counted","Missing hours","Net balance","Late days"]],mo={};
- S.slice().sort(function(a,b){return a.d<b.d?-1:a.d>b.d?1:tm(a.s)-tm(b.s)}).forEach(function(x){var u=dur(x);mo[x.d.slice(0,7)]=1;sh.push([x.d,wd(x.d),x.s,x.e,u===null?"":f(u)])});
- Object.keys(mo).sort().forEach(function(ym){var s=stat(ym);ms.push([ym,f(s.ot),s.sh?f(s.sh,1):"0:00",f(s.ot+s.sh,1),s.lt]);s.D.slice().reverse().forEach(function(x){dy.push([x.d,wd(x.d),x.done?f(x.tot):"",f(x.goal),x.diff===null?"":f(x.diff,1),x.cnt===null?"":f(x.cnt),x.late||""])})});
- var wb=XLSX.utils.book_new();[["Shifts",sh],["Days",dy],["Months",ms]].forEach(function(p){var w=XLSX.utils.aoa_to_sheet(p[1]);w["!cols"]=p[1][0].map(function(){return{wch:18}});XLSX.utils.book_append_sheet(wb,w,p[0])});
- saveFile("pointages.xlsx",XLSX.write(wb,{bookType:"xlsx",type:"array"}))};
-document.getElementById("pdf").onclick=function(){var J=window.jspdf;if(!J||!J.jsPDF){say("PDF library not loaded.");return}
- var doc=new J.jsPDF(),s=stat(cur),y=+cur.slice(0,4),m=+cur.slice(5,7);
- doc.setFontSize(18);doc.text("Pointages - "+MON[m-1]+" "+y,14,18);doc.setFontSize(11);
- doc.text("Overtime: "+fp(s.ot,1)+"    Missing: "+(s.sh?fp(s.sh,1):"0:00")+"    Net: "+fp(s.ot+s.sh,1)+"    Late days: "+s.lt,14,27);
- var body=s.D.slice().reverse().map(function(x){var d=dt(x.d);return[p2(d.getDate())+"/"+p2(d.getMonth()+1),DAYS[d.getDay()],x.it.map(function(i){return i.s+" - "+(i.e||"...")}).join("  "),x.done?f(x.tot):"",f(x.goal),x.diff===null?"":(x.diff>0?fp(x.cnt,1)+(x.cnt!==x.diff?" (real "+fp(x.diff,1)+")":""):fp(x.diff,1)),x.late?"+"+x.late+" min":""]});
- doc.autoTable({startY:32,head:[["Date","Day","Shifts","Worked","Goal","Overtime","Late"]],body:body,styles:{fontSize:10},headStyles:{fillColor:[37,99,235]},didParseCell:function(h){if(h.section==="body"&&h.column.index===6&&h.cell.raw)h.cell.styles.textColor=[217,58,58]}});
- saveFile("pointages-"+cur+".pdf",doc.output("arraybuffer"))};
 function pt(v){if(v==null||v==="")return"";if(typeof v==="number"){var m=Math.round((v%1)*1440)%1440;return p2(Math.floor(m/60))+":"+p2(m%60)}var a=String(v).match(/(\d{1,2}):(\d{2})/);return a?p2(+a[1])+":"+a[2]:""}
-function pd(v){if(v==null)return"";if(typeof v==="number"){var t=new Date(Math.round((v-25569)*86400000));return t.getUTCFullYear()+"-"+p2(t.getUTCMonth()+1)+"-"+p2(t.getUTCDate())}var s=String(v).trim(),a=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(a)return a[1]+"-"+a[2]+"-"+a[3];a=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);if(a){var y=+a[3];if(y<100)y+=2000;return y+"-"+p2(+a[2])+"-"+p2(+a[1])}return""}
+function pd(v){var r=pd0(v);if(SW&&r){var a=r.split("-");if(+a[2]<=12)r=a[0]+"-"+a[2]+"-"+a[1]}return r}
+function pd0(v){if(v==null)return"";if(typeof v==="number"){var t=new Date(Math.round((v-25569)*86400000));return t.getUTCFullYear()+"-"+p2(t.getUTCMonth()+1)+"-"+p2(t.getUTCDate())}var s=String(v).trim(),a=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(a)return a[1]+"-"+a[2]+"-"+a[3];a=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);if(a){var y=+a[3];if(y<100)y+=2000;return CF.df=="mdy"?y+"-"+p2(+a[1])+"-"+p2(+a[2]):y+"-"+p2(+a[2])+"-"+p2(+a[1])}return""}
 document.getElementById("imp").onclick=function(){document.getElementById("file").click()};
 document.getElementById("file").onchange=function(ev){var fl=ev.target.files[0];if(!fl)return;if(!window.XLSX){say("Excel library not loaded.");return}
- var r=new FileReader();r.onload=function(){try{var wb=XLSX.read(r.result,{type:"array"}),rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true}),hd=rows[0]&&/date/i.test(String(rows[0][0])),add=0,skip=0;
-  rows.forEach(function(w,i){if(hd&&i==0)return;var d,s,e;var pdd=false;if(hd){d=pd(w[0]);s=pt(w[2]);e=pt(w[3]);pdd=/^y/i.test(String(w[5]||""))}else{s=pt(w[0]);e=pt(w[1]);d=pd(w[2])}if(!d||!s)return;if(S.some(function(x){return x.d==d&&x.s==s})){skip++;return}var nx={id:Date.now()+i,d:d,s:s,e:e};if(pdd)nx.paid=true;S.push(nx);add++});
-  save();render();say("Imported "+add+" shifts"+(skip?" ("+skip+" already there, skipped)":"")+".")}catch(x){say("Could not read this file.")}};
+ var r=new FileReader();r.onload=function(){choose("Dates in this file","Pick the second option if Excel flipped day and month (for example 1 Oct shown as 10 Jan).",[{l:"Normal",p:1,fn:function(){go(false)}},{l:"Swap day and month",fn:function(){go(true)}}]);function go(sw){SW=sw;try{var wb=XLSX.read(r.result,{type:"array"}),rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames.filter(function(n){return/^(shifts|services)$/i.test(n)})[0]||wb.SheetNames[0]],{header:1,raw:true}),hd=rows[0]&&/date/i.test(String(rows[0][0])),add=0,skip=0;
+  rows.forEach(function(w,i){if(hd&&i==0)return;var d,s,e;var pdd=false;if(hd){d=pd(w[0]);s=pt(w[2]);e=pt(w[3]);pdd=/^(y|o|1|x)/i.test(String(w[5]||""))}else{s=pt(w[0]);e=pt(w[1]);d=pd(w[2])}if(!d||!s)return;if(S.some(function(x){return x.d==d&&x.s==s})){skip++;return}var nx={id:Date.now()+i,d:d,s:s,e:e};if(pdd)nx.paid=true;S.push(nx);add++});
+  save();render();say("Imported "+add+" shifts"+(skip?" ("+skip+" already there, skipped)":"")+".")}catch(x){say("Could not read this file.")}}};
  r.readAsArrayBuffer(fl);ev.target.value=""};
 function choose(t,x,opts){document.getElementById("qt").textContent=t;document.getElementById("qx").textContent=x||"";var b=document.getElementById("qb");b.innerHTML="";
  opts.forEach(function(o){var e=document.createElement("button");e.textContent=o.l;if(o.p)e.className="p";e.onclick=function(){qclose();if(o.fn)o.fn()};b.appendChild(e)});
@@ -158,7 +173,7 @@ function choose(t,x,opts){document.getElementById("qt").textContent=t;document.g
 function qclose(){document.getElementById("qs").className="sheet"}
 function ask(x,yes,fn){choose("Please confirm",x,[{l:yes,fn:fn,p:1}])}
 function setPaid(list,v){S.forEach(function(x){if(list.indexOf(x.d)>=0){if(v)x.paid=true;else delete x.paid}});save();render()}
-function lab(d){return wd(d)+" "+d.slice(8)+"/"+d.slice(5,7)}
+function lab(d){return wd(d)+" "+fmt(dt(d))}
 function togglePaid(d){var g=days(d.slice(0,7)).filter(function(x){return x.d==d})[0];if(!g)return;
  if(g.paid)ask("Count the overtime of "+lab(d)+" as pending again?","Yes, undo",function(){setPaid([d],false)});
  else ask("Confirm that management paid you "+f(g.cnt)+" of overtime for "+lab(d)+"? It will stop counting.","Yes, I got it",function(){setPaid([d],true)})}
@@ -168,27 +183,76 @@ document.getElementById("stats").onclick=function(ev){if(!ev.target.closest("#pa
 document.getElementById("chips").onclick=function(ev){var b=ev.target.closest("button");if(!b)return;var d=S.filter(function(y){return String(y.id)===b.dataset.id})[0];if(d)sheet(d)};
 function months(){var m={};S.forEach(function(x){m[x.d.slice(0,7)]=1});return Object.keys(m).sort()}
 function pick(D,o){return(o?D.filter(function(x){return x.cnt>0}):D).slice().reverse()}
-function exp(k){choose("Export "+(k=="xl"?"Excel":"PDF"),"What do you want to export?",[{l:"Everything",p:1,fn:function(){k=="xl"?exportX(false):exportP(false)}},{l:"Only days with overtime",fn:function(){k=="xl"?exportX(true):exportP(true)}}])}
-document.getElementById("xl").onclick=function(){exp("xl")};document.getElementById("pdf").onclick=function(){exp("pdf")};
-function exportX(o){if(!window.XLSX){say("Excel library not loaded.");return}
- var sh=[["Date","Day","Start","End","Worked","Paid"]],dy=[["Date","Day","Worked","Goal","Overtime real","Overtime counted","Paid","Late (min)"]],ms=[["Month","Worked","Overtime total","Overtime paid","Overtime pending","Missing hours","Net balance","Late days"]];
- months().forEach(function(ym){var s=stat(ym);ms.push([ym,f(s.wk),f(s.ot+s.pa),f(s.pa),f(s.ot),s.sh?f(s.sh,1):"0:00",f(s.ot+s.sh,1),s.lt]);
-  pick(s.D,o).forEach(function(x){x.it.forEach(function(i){var u=dur(i);sh.push([x.d,wd(x.d),i.s,i.e,u===null?"":f(u),x.paid?"yes":""])});
-   dy.push([x.d,wd(x.d),x.done?f(x.tot):"",f(x.goal),x.diff===null?"":f(x.diff,1),x.cnt===null?"":f(x.cnt),x.paid?"yes":"",x.late||""])});
-  dy.push(["TOTAL "+ym,"",f(s.wk),"","",f(s.ot+s.pa),"paid "+f(s.pa)+" / pending "+f(s.ot),""]);dy.push([])});
- var wb=XLSX.utils.book_new();[["Shifts",sh],["Days",dy],["Months",ms]].forEach(function(p){var w=XLSX.utils.aoa_to_sheet(p[1]);w["!cols"]=p[1][0].map(function(){return{wch:18}});XLSX.utils.book_append_sheet(wb,w,p[0])});
- saveFile(o?"pointages-overtime.xlsx":"pointages.xlsx",XLSX.write(wb,{bookType:"xlsx",type:"array"}))}
-function exportP(o){var J=window.jspdf;if(!J||!J.jsPDF){say("PDF library not loaded.");return}
- var doc=new J.jsPDF(),body=[],B={fontStyle:"bold",fillColor:[225,232,245]};
- months().forEach(function(ym){var s=stat(ym),y=+ym.slice(0,4),m=+ym.slice(5,7);
-  body.push([{content:MON[m-1]+" "+y,colSpan:8,styles:{fontStyle:"bold",fillColor:[37,99,235],textColor:255}}]);
-  pick(s.D,o).forEach(function(x){var d=dt(x.d);body.push([p2(d.getDate())+"/"+p2(m),DAYS[d.getDay()],x.it.map(function(i){return i.s+"-"+(i.e||"...")}).join(" "),x.done?f(x.tot):"",f(x.goal),x.diff===null?"":(x.diff>0?fp(x.cnt,1)+(x.cnt!==x.diff?" (real "+fp(x.diff,1)+")":""):fp(x.diff,1)),x.paid&&x.cnt?"Paid":"",x.late?"+"+x.late+" min":""])});
-  body.push([{content:"Total "+MON[m-1],colSpan:3,styles:B},{content:f(s.wk),styles:B},{content:"",styles:B},{content:fp(s.ot+s.pa,1),styles:B},{content:"Pending "+f(s.ot)+" / Paid "+f(s.pa),colSpan:2,styles:B}])});
- doc.setFontSize(16);doc.text("Pointages - "+(o?"days with overtime":"all days"),14,16);
- doc.autoTable({startY:22,head:[["Date","Day","Shifts","Worked","Goal","Overtime","Paid","Late"]],body:body,styles:{fontSize:9},headStyles:{fillColor:[37,99,235]},didParseCell:function(h){if(h.section==="body"&&h.column.index===7&&typeof h.cell.raw==="string"&&h.cell.raw)h.cell.styles.textColor=[217,58,58]}});
- saveFile(o?"pointages-overtime.pdf":"pointages-all.pdf",doc.output("arraybuffer"))}
-try{localStorage.setItem("pt-test","1");localStorage.removeItem("pt-test")}catch(e){setTimeout(function(){say("Warning: this browser blocks storage, so data will NOT be kept.")},300)}
-try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
-if("serviceWorker" in navigator)window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})});
+var FR={"Manager view":"Vue direction","Full":"Complet","Columns":"Colonnes","Month totals":"Totaux mensuels","Backup sheet (all times, to import later)":"Feuille de sauvegarde (tous les horaires, pour réimporter)","All / none":"Tout / rien","Choose at least one month.":"Choisissez au moins un mois.","Choose at least one column.":"Choisissez au moins une colonne.","Difference":"Écart","Export":"Exporter","All days":"Tous les jours","Overtime rule":"Règle des heures sup","Ignore short overtime, round up to the hour":"Ignorer les petites heures sup, arrondir à l'heure","Ignore short overtime, count exact time":"Ignorer les petites heures sup, compter le temps exact","Count all overtime exactly":"Tout compter exactement","Minimum overtime that counts (minutes)":"Heures sup minimum comptées (minutes)","Changing the rule recalculates all days.":"Changer la règle recalcule tous les jours.","+ Add a day":"+ Ajouter un jour","Copy backup":"Copier la sauvegarde","⚙ Settings":"⚙ Réglages","⬆ Import":"⬆ Importer","Edit shift":"Modifier le service","Add a shift":"Ajouter un service","Date the shift started":"Date de début du service","Start":"Début","End (past midnight is fine)":"Fin (après minuit possible)","End":"Fin","Delete":"Supprimer","Cancel":"Annuler","Save":"Enregistrer","No shift running":"Aucun service en cours","■  Hold 5 s to END shift":"■  Maintenir 5 s pour TERMINER","▶  Hold 5 s to START shift":"▶  Maintenir 5 s pour DÉMARRER","Overtime to be paid":"Heures sup à payer","Net balance":"Solde net","Missing hours":"Heures manquantes","Late arrivals (>20 min)":"Retards (>20 min)","Overtime already paid":"Heures sup déjà payées","No shifts this month":"Aucun service ce mois-ci","In progress":"En cours","4 h day":"Journée 4 h","Paid ✓":"Payé ✓","Undo":"Annuler","Mark paid":"Marquer payé","Please confirm":"Veuillez confirmer","Yes, undo":"Oui, annuler","Yes, I got it":"Oui, je l'ai reçu","Delete this shift?":"Supprimer ce service ?","What do you want to export?":"Que voulez-vous exporter ?","Everything":"Tout","Only days with overtime":"Seulement les jours avec heures sup","Could not save the file.":"Impossible d'enregistrer le fichier.","Could not read this file.":"Impossible de lire ce fichier.","Excel library not loaded.":"Bibliothèque Excel non chargée.","PDF library not loaded.":"Bibliothèque PDF non chargée.","Backup copied. Paste it in a note or an email.":"Sauvegarde copiée. Collez-la dans une note ou un e-mail.","Copy blocked by the browser.":"Copie bloquée par le navigateur.","Copy not available here.":"Copie indisponible ici.","Dates in this file":"Dates de ce fichier","Normal":"Telles quelles","Swap day and month":"Inverser jour et mois","Pick the second option if Excel flipped day and month (for example 1 Oct shown as 10 Jan).":"Choisissez la 2e option si Excel a inversé jour et mois (ex. 1 oct. affiché 10 janv.).","Settings":"Réglages","Language":"Langue","Date format":"Format de date","Time zone":"Fuseau horaire","Automatic (phone)":"Automatique (téléphone)","Set the app time manually (leave empty to keep)":"Régler l'heure de l'app à la main (vide = inchangée)","Reset time":"Heure auto","Day/Month/Year (17/11/2026)":"Jour/Mois/Année (17/11/2026)","Month/Day/Year (11/17/2026)":"Mois/Jour/Année (11/17/2026)","Year-Month-Day (2026-11-17)":"Année-Mois-Jour (2026-11-17)","Shift in progress":"Service en cours","Day":"Jour","Worked":"Travaillé","Paid":"Payé","Comment":"Commentaire","Goal":"Objectif","Overtime real":"Heures sup réelles","Overtime counted":"Heures sup comptées","Late (min)":"Retard (min)","Month":"Mois","Overtime total":"Heures sup totales","Overtime paid":"Heures sup payées","Overtime pending":"Heures sup en attente","Late days":"Jours de retard","Shifts":"Services","Days":"Jours","Months":"Mois","Overtime":"Heures sup","Late":"Retard","yes":"oui","days with overtime":"jours avec heures sup","all days":"tous les jours"};
+var PT=[[/^Started (.+) · (.+) so far$/,"Commencé à $1 · $2 jusqu'ici"],[/^Keep holding… (\d+)$/,"Continuez… $1"],[/^Mark all (.+) of this month as paid$/,"Marquer les $1 de ce mois comme payées"],[/^Worked (.+)$/,"Travaillé $1"],[/^Late \+(\d+) min$/,"Retard +$1 min"],[/^real (.+)$/,"réel $1"],[/^Count the overtime of (.+) as pending again\?$/,"Remettre les heures sup du $1 en attente ?"],[/^Confirm that management paid you all (.+) of overtime for (.+)\? It will stop counting\.$/,"Confirmez que la direction vous a payé la totalité, $1 d'heures sup pour $2 ? Elles ne seront plus comptées."],[/^Confirm that management paid you (.+) of overtime for (.+)\? It will stop counting\.$/,"Confirmez que la direction vous a payé $1 d'heures sup pour $2 ? Elles ne seront plus comptées."],[/^Export (.+)$/,"Exporter $1"],[/^Saved (.+) \(see your Downloads folder\)\.$/,"Enregistré : $1 (voir Téléchargements)."],[/^Imported (\d+) shifts( \((\d+) already there, skipped\))?\.$/,function(m){return m[1]+" services importés"+(m[3]?" ("+m[3]+" déjà présents, ignorés)":"")+"."}],[/^Time zone: (.+?)( · correction (\S+) h)?$/,function(m){return"Fuseau horaire : "+m[1]+(m[3]?" · correction "+m[3]+" h":"")}],[/^Phone time zone: (.*)\. App time now: (\S+)( \(corrected (.+) min\))?$/,function(m){return"Fuseau du téléphone : "+m[1]+". Heure de l'app : "+m[2]+(m[4]?" (corrigée de "+m[4]+" min)":"")}],[/^Goal 8 h \(Mon–Fri\)[\s\S]*$/,"Objectif 8 h (lun–ven), 4 h (sam). Les heures sup sont comptées par jour : moins de 50 min = 0, dès 50 min on arrondit à l'heure suivante. Retard = après 09:20. Les données restent sur ce téléphone : exportez de temps en temps pour sauvegarder. Les exports proposent tout ou seulement les jours avec heures sup. Touchez « Marquer payé » quand la direction vous a payé : ces heures ne comptent plus."],[/^Warning: this browser blocks storage[\s\S]*$/,"Attention : ce navigateur bloque le stockage, les données ne seront PAS conservées."],[/^Short day: worked (.+) of (.+) \((.+)\)$/,"Journée courte : travaillé $1 sur $2 ($3)"],[/^Overtime (\S+)( \(real (\S+)\))?( - paid)?$/,function(m){return"Heures sup "+m[1]+(m[3]?" (réel "+m[3]+")":"")+(m[4]?" - payées":"")}],[/^Extra time under (\d+) min, not counted \(\+(.+)\)$/,"Moins de $1 min en plus, non compté (+$2)"],[/^paid (.+) \/ pending (.+)$/,"payé $1 / en attente $2"],[/^Pending (.+) \/ Paid (.+)$/,"En attente $1 / Payé $2"]];
+function L(s){if(LANG!="fr"||typeof s!="string")return s;var k=s.trim();if(!k)return s;if(FR.hasOwnProperty(k))return s.replace(k,function(){return FR[k]});for(var i=0;i<PT.length;i++){var m=k.match(PT[i][0]);if(m){var r=typeof PT[i][1]=="function"?PT[i][1](m):k.replace(PT[i][0],PT[i][1]);return s.replace(k,function(){return r})}}return s}
+function tr(){var w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT),n,a=[];while(n=w.nextNode())a.push(n);a.forEach(function(n){if(/^(SCRIPT|STYLE)$/.test(n.parentNode.nodeName))return;var v=L(n.nodeValue);if(v!==n.nodeValue)n.nodeValue=v})}
+if(LANG=="fr"){document.documentElement.lang="fr";var busy=false;new MutationObserver(function(){if(busy)return;busy=true;tr();busy=false}).observe(document.body,{childList:true,subtree:true,characterData:true})}
+function cm(x){var a=[];if(x.live)a.push("Shift in progress");if(x.diff!==null){if(x.diff<0)a.push("Short day: worked "+f(x.tot)+" of "+f(x.goal)+" ("+f(x.diff,1)+")");else if(x.cnt>0)a.push("Overtime "+f(x.cnt)+(x.cnt!==x.diff?" (real "+f(x.diff)+")":"")+(x.paid?" - paid":""));else if(x.diff>0)a.push("Extra time under "+CF.otMin+" min, not counted (+"+f(x.diff)+")")}if(x.late)a.push("Late +"+x.late+" min");return a.map(L).join("; ")}
+function closeS(){document.getElementById("ss").className="sheet"}
+document.getElementById("clk").onclick=function(){var z=document.getElementById("sz");
+ if(!z.options.length){var zs=[];try{zs=Intl.supportedValuesOf("timeZone")}catch(e){}if(!zs.length)zs=["Africa/Casablanca","Africa/Algiers","Africa/Tunis","Africa/Cairo","Europe/Paris","Europe/London","Europe/Madrid","Asia/Dubai","America/New_York","America/Montreal","UTC"];
+  z.innerHTML='<option value="">Automatic (phone)</option>'+zs.map(function(x){return"<option>"+x+"</option>"}).join("")}
+ document.getElementById("sl").value=CF.lang;document.getElementById("so").value=CF.otMode;document.getElementById("sm").value=CF.otMin;document.getElementById("sd").value=CF.df;z.value=CF.tz;document.getElementById("st").value="";
+ var dz="";try{dz=Intl.DateTimeFormat().resolvedOptions().timeZone}catch(e){}
+ document.getElementById("sinfo").textContent="Phone time zone: "+dz+". App time now: "+hm(now())+(CF.off?" (corrected "+(CF.off>0?"+":"")+CF.off+" min)":"");
+ document.getElementById("ss").className="sheet on"};
+document.getElementById("scn").onclick=closeS;
+document.getElementById("srs").onclick=function(){CF.off=0;saveCF();closeS();render()};
+document.getElementById("ssv").onclick=function(){var nl=document.getElementById("sl").value,tv=document.getElementById("st").value;
+ CF.df=document.getElementById("sd").value;CF.tz=document.getElementById("sz").value;CF.otMode=document.getElementById("so").value;CF.otMin=Math.max(0,Math.min(59,Math.round(+document.getElementById("sm").value)||0));
+ if(tv){CF.off=0;var b=now(),d=tm(tv)-(b.getHours()*60+b.getMinutes());CF.off=((d+720)%1440+1440)%1440-720}
+ var ch=nl!=CF.lang;CF.lang=nl;saveCF();closeS();if(ch)location.reload();else{E("msg").textContent=noteText();render()}};
+if(LANG=="fr")tr();
+function E(i){return document.getElementById(i)}
+var COLS=[["date","Date"],["day","Day"],["start","Start"],["end","End"],["worked","Worked"],["goal","Goal"],["diff","Difference"],["ot","Overtime"],["paid","Paid"],["late","Late (min)"],["cm","Comment"]],ALLC=COLS.map(function(c){return c[0]}),EK="xl";
+if(!CF.ex)CF.ex={cols:ALLC,oo:false,tot:true,bk:true};
+function cl(k){return L(COLS.filter(function(c){return c[0]==k})[0][1])}
+function noteText(){var X=CF.otMin,fr=LANG=="fr",r=CF.otMode=="all"?(fr?"Toutes les heures sup sont comptées exactement.":"All overtime is counted exactly."):CF.otMode=="exact"?(fr?"Heures sup comptées par jour : moins de "+X+" min = 0, au-delà le temps exact compte.":"Overtime is counted per day: under "+X+" min = 0, above that the exact time counts."):(fr?"Heures sup comptées par jour : moins de "+X+" min = 0, dès "+X+" min on arrondit à l'heure suivante.":"Overtime is counted per day: under "+X+" min = 0, from "+X+" min it rounds up to the next hour.");
+ return fr?"Objectif 8 h (lun–ven), 4 h (sam). "+r+" Retard = après 09:20. Les données restent sur ce téléphone : exportez de temps en temps pour sauvegarder. Touchez « Marquer payé » quand la direction vous a payé : ces heures ne comptent plus.":"Goal 8 h (Mon–Fri), 4 h (Sat). "+r+" Late = after 09:20. Data stays on this phone, so export now and then as a backup. Tap \"Mark paid\" once management has paid you: that overtime stops counting."}
+function cv(k,x){var r={s:"",n:null};
+ if(k=="date")r.s=fmt(dt(x.d),true);else if(k=="day")r.s=wd(x.d);
+ else if(k=="start")r.s=x.it.map(function(i){return i.s}).join(" / ");
+ else if(k=="end")r.s=x.it.map(function(i){return i.e||""}).join(" / ");
+ else if(k=="worked"){if(x.done){r.n=x.tot;r.s=f(x.tot)}}
+ else if(k=="goal"){r.n=x.goal;r.s=f(x.goal)}
+ else if(k=="diff"){if(x.diff!==null)r.s=f(x.diff,1)}
+ else if(k=="ot"){if(x.cnt>0){r.n=x.cnt;r.s=f(x.cnt)}}
+ else if(k=="paid")r.s=x.paid&&x.cnt?L("yes"):"";
+ else if(k=="late")r.s=x.late?String(x.late):"";
+ else if(k=="cm")r.s=cm(x);
+ return r}
+function tv(k,s,lab){var r={s:"",n:null};if(k=="date")r.s=lab;else if(k=="worked"){r.n=s.wk;r.s=f(s.wk)}else if(k=="ot"){r.n=s.ot+s.pa;r.s=f(s.ot+s.pa)}else if(k=="paid")r.s=L("paid "+f(s.pa)+" / pending "+f(s.ot));else if(k=="late")r.s=s.lt?String(s.lt):"";return r}
+function build(ms,cols,oo,tot){var rows=[];ms.forEach(function(ym){var s=stat(ym),y=ym.slice(0,4),m=+ym.slice(5,7);
+ rows.push({t:"m",c:[{s:MON[m-1]+" "+y}]});
+ pick(s.D,oo).forEach(function(x){rows.push({t:"d",c:cols.map(function(k){return cv(k,x)})})});
+ if(tot){var lab="TOTAL "+MON[m-1]+" "+y,c=cols.map(function(k){return tv(k,s,lab)});if(!c[0].s)c[0]={s:lab,n:null};rows.push({t:"t",c:c})}});return rows}
+function exportX(R,cols,ms,oo,bk){if(!window.XLSX){say("Excel library not loaded.");return}
+ var a=[cols.map(cl)];R.forEach(function(r){if(r.t=="m"){a.push([r.c[0].s]);return}a.push(r.c.map(function(c){return c.n!=null?{t:"n",v:c.n/1440,z:"[h]:mm"}:c.s}));if(r.t=="t")a.push([])});
+ var wb=XLSX.utils.book_new(),w=XLSX.utils.aoa_to_sheet(a);w["!cols"]=cols.map(function(){return{wch:18}});XLSX.utils.book_append_sheet(wb,w,L("Days"));
+ if(bk){var sh=[["Date","Day","Start","End","Worked","Paid","Comment"].map(L)];ms.forEach(function(ym){pick(days(ym),oo).forEach(function(x){x.it.forEach(function(i,j){var u=dur(i);sh.push([x.d,wd(x.d),i.s,i.e,u===null?"":f(u),x.paid?L("yes"):"",j==0?cm(x):""])})})});
+  var w2=XLSX.utils.aoa_to_sheet(sh);w2["!cols"]=sh[0].map(function(){return{wch:16}});XLSX.utils.book_append_sheet(wb,w2,L("Shifts"))}
+ saveFile("pointages-"+(ms.length==1?ms[0]:"months")+".xlsx",XLSX.write(wb,{bookType:"xlsx",type:"array"}))}
+function exportP(R,cols,ms){var J=window.jspdf;if(!J||!J.jsPDF){say("PDF library not loaded.");return}
+ var doc=new J.jsPDF({orientation:cols.length>6?"landscape":"portrait"}),li=cols.indexOf("late"),B={fontStyle:"bold",fillColor:[225,232,245]};
+ var body=R.map(function(r){if(r.t=="m")return[{content:r.c[0].s,colSpan:cols.length,styles:{fontStyle:"bold",fillColor:[37,99,235],textColor:255}}];return r.c.map(function(c){return r.t=="t"?{content:c.s,styles:B}:c.s})});
+ doc.setFontSize(16);doc.text("Pointages",14,16);
+ doc.autoTable({startY:22,head:[cols.map(cl)],body:body,styles:{fontSize:9},headStyles:{fillColor:[37,99,235]},didParseCell:function(h){if(h.section==="body"&&li>=0&&h.column.index===li&&typeof h.cell.raw==="string"&&h.cell.raw)h.cell.styles.textColor=[217,58,58]}});
+ saveFile("pointages-"+(ms.length==1?ms[0]:"months")+".pdf",doc.output("arraybuffer"))}
+function setCols(a){[].forEach.call(document.querySelectorAll("#ec input"),function(i){i.checked=a.indexOf(i.value)>=0})}
+function openExp(k){EK=k;var ex=CF.ex,ms=months().reverse();E("et").textContent="Export "+(k=="xl"?"Excel":"PDF");
+ E("em").innerHTML=ms.map(function(m){return'<label class="ck"><input type="checkbox" value="'+m+'"'+(m==cur?" checked":"")+'>'+MON[+m.slice(5,7)-1]+" "+m.slice(0,4)+"</label>"}).join("");
+ E("ec").innerHTML=COLS.map(function(c){return'<label class="ck"><input type="checkbox" value="'+c[0]+'"'+(ex.cols.indexOf(c[0])>=0?" checked":"")+">"+c[1]+"</label>"}).join("");
+ E("eo").value=ex.oo?"ot":"all";E("etot").checked=ex.tot;E("eb").checked=ex.bk;E("ebw").style.display=k=="xl"?"":"none";E("eerr").textContent="";E("es").className="sheet on"}
+E("xl").onclick=function(){openExp("xl")};E("pdf").onclick=function(){openExp("pdf")};
+E("pm").onclick=function(){setCols(["date","day","ot"]);E("eo").value="ot";E("etot").checked=true;E("eb").checked=false};
+E("pf").onclick=function(){setCols(ALLC);E("eo").value="all";E("etot").checked=true;E("eb").checked=true};
+E("ema").onclick=function(){var b=[].slice.call(document.querySelectorAll("#em input")),all=b.every(function(i){return i.checked});b.forEach(function(i){i.checked=!all})};
+E("ecn").onclick=function(){E("es").className="sheet"};
+E("eok").onclick=function(){var q=function(s){return[].filter.call(document.querySelectorAll(s),function(i){return i.checked}).map(function(i){return i.value})},ms=q("#em input").sort(),cols=q("#ec input");
+ if(!ms.length){E("eerr").textContent="Choose at least one month.";return}if(!cols.length){E("eerr").textContent="Choose at least one column.";return}
+ var oo=E("eo").value=="ot",tot=E("etot").checked;CF.ex={cols:cols,oo:oo,tot:tot,bk:E("eb").checked};saveCF();E("es").className="sheet";
+ var R=build(ms,cols,oo,tot);EK=="xl"?exportX(R,cols,ms,oo,E("eb").checked):exportP(R,cols,ms)};
+E("msg").textContent=noteText();
 render();setInterval(render,30000);
 </script></body></html>
