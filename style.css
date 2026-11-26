@@ -1,0 +1,373 @@
+/* Pointages: look and feel. Colors are variables on :root (light) and a dark copy for dark mode. */
+:root {
+  --bg: #f4f5f7;
+  --card: #fff;
+  --tx: #1b1f24;
+  --mu: #6b7480;
+  --ln: #e3e6ea;
+  --gr: #1f9d55;
+  --rd: #d93a3a;
+  --am: #c77700;
+  --bl: #2563eb;
+  --okbg: #e5f6ec;
+  --rdbg: #fde8e8;
+  --ambg: #fff1d6;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111418;
+    --card: #1b2026;
+    --tx: #eef1f4;
+    --mu: #9aa4af;
+    --ln: #2b323a;
+    --gr: #3ccf7a;
+    --rd: #ff6b6b;
+    --am: #f0a73a;
+    --bl: #6ea0ff;
+    --okbg: #14301f;
+    --rdbg: #3a1a1a;
+    --ambg: #3a2b10;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111418;
+  --card: #1b2026;
+  --tx: #eef1f4;
+  --mu: #9aa4af;
+  --ln: #2b323a;
+  --gr: #3ccf7a;
+  --rd: #ff6b6b;
+  --am: #f0a73a;
+  --bl: #6ea0ff;
+  --okbg: #14301f;
+  --rdbg: #3a1a1a;
+  --ambg: #3a2b10;
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+}
+html {
+  scroll-padding-top: env(safe-area-inset-top, 0px);
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--tx);
+  font:
+    16px/1.35 system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    Arial,
+    sans-serif;
+}
+main {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 14px 14px 40px;
+}
+.card {
+  background: var(--card);
+  border: 1px solid var(--ln);
+  border-radius: 18px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.clock {
+  text-align: center;
+}
+.day {
+  color: var(--mu);
+  font-size: 15px;
+}
+.time {
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.status {
+  margin: 4px 0 12px;
+  font-size: 15px;
+  color: var(--mu);
+  min-height: 22px;
+}
+.big {
+  width: 100%;
+  border: 0;
+  border-radius: 16px;
+  padding: 22px 10px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+}
+.big {
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+}
+.fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: rgba(255, 255, 255, 0.35);
+}
+.lbl {
+  position: relative;
+}
+.sub {
+  flex-wrap: wrap;
+}
+.go {
+  background: var(--gr);
+}
+.stop {
+  background: var(--rd);
+}
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 6px 2px 10px;
+}
+.nav b {
+  font-size: 18px;
+}
+.nav button {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--ln);
+  background: var(--card);
+  color: var(--tx);
+  font-size: 20px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.st {
+  border-radius: 14px;
+  padding: 12px;
+  background: var(--bg);
+}
+.st small {
+  display: block;
+  color: var(--mu);
+  font-size: 12px;
+}
+.st b {
+  font-size: 22px;
+}
+.pos {
+  color: var(--gr);
+}
+.neg {
+  color: var(--rd);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 4px;
+  border-top: 1px solid var(--ln);
+  cursor: pointer;
+}
+.row:first-child {
+  border-top: 0;
+}
+.dd {
+  width: 62px;
+}
+.dd b {
+  display: block;
+  font-size: 16px;
+}
+.dd span {
+  font-size: 13px;
+  color: var(--mu);
+}
+.mid {
+  flex: 1;
+  font-size: 15px;
+}
+.mid small {
+  color: var(--mu);
+  display: block;
+}
+.ot {
+  font-weight: 700;
+  font-size: 16px;
+  white-space: nowrap;
+}
+.tag {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 2px 7px;
+  margin-top: 3px;
+  margin-right: 4px;
+}
+.late {
+  background: var(--rdbg);
+  color: var(--rd);
+}
+.live {
+  background: var(--ambg);
+  color: var(--am);
+}
+.sat {
+  background: var(--okbg);
+  color: var(--gr);
+}
+.sub {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.sub button,
+.sheet button {
+  border: 1px solid var(--ln);
+  background: var(--card);
+  color: var(--tx);
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 15px;
+  flex: 1;
+}
+.empty {
+  color: var(--mu);
+  text-align: center;
+  padding: 18px;
+}
+.pay {
+  border: 1px solid var(--ln);
+  background: var(--bg);
+  color: var(--tx);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 13px;
+  margin: 4px 0 0 auto;
+  display: block;
+}
+.chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chips button {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+}
+.chips .on {
+  background: var(--bl);
+  color: #fff;
+  border: 0;
+}
+.sheet .q button {
+  width: 100%;
+  margin-top: 8px;
+}
+.sheet {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  align-items: flex-end;
+  z-index: 20;
+}
+.sheet.on {
+  display: flex;
+}
+.sheet > div {
+  background: var(--card);
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  border-radius: 20px 20px 0 0;
+  padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+}
+.sheet label {
+  display: block;
+  font-size: 13px;
+  color: var(--mu);
+  margin: 10px 0 4px;
+}
+.sheet input {
+  width: 100%;
+  font-size: 20px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--ln);
+  background: var(--bg);
+  color: var(--tx);
+}
+.sheet .b {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+.sheet .p {
+  background: var(--bl);
+  color: #fff;
+  border: 0;
+}
+.sheet .d {
+  color: var(--rd);
+}
+.cg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 10px;
+}
+.sheet label.ck {
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+  color: var(--tx);
+  margin: 6px 0;
+}
+.sheet input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  margin: 0 10px 0 0;
+  flex: none;
+}
+#qx {
+  white-space: pre-line;
+}
+.err {
+  color: var(--rd);
+  font-size: 14px;
+  min-height: 18px;
+  margin-top: 8px;
+}
+.sheet select {
+  width: 100%;
+  font-size: 18px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--ln);
+  background: var(--bg);
+  color: var(--tx);
+}
+.note {
+  font-size: 12px;
+  color: var(--mu);
+  text-align: center;
+  margin-top: 10px;
+}
