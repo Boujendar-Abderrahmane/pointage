@@ -434,6 +434,7 @@ function sheet(x) {
   document.getElementById("stitle").textContent = x ? "Edit shift" : "Add a shift";
   document.getElementById("fd").value = fmt(dt(x ? x.d : iso(now())), true);
   document.getElementById("fdp").value = x ? x.d : iso(now());
+  pickSeen = document.getElementById("fdp").value;
   document.getElementById("fd").placeholder = dph();
   document.getElementById("ferr").textContent = "";
   document.getElementById("fs").value = x ? x.s : "09:00";
@@ -469,6 +470,7 @@ document.getElementById("list").onclick = function (ev) {
   sheet(d);
 };
 document.getElementById("fsave").onclick = function () {
+  takePick();
   var d = parseD(document.getElementById("fd").value),
     s = document.getElementById("fs").value,
     e = document.getElementById("fe").value;
@@ -894,6 +896,8 @@ var FR = {
   "all days": "tous les jours",
 };
 var PT = [
+  [/^Files out of sync: (.+)\. Open the app online and reload twice\.$/, "Fichiers désynchronisés : $1. Ouvrez l'app en ligne et rechargez deux fois."],
+  [/^Works offline ✓ · v(\d+)$/, "Fonctionne hors ligne ✓ · v$1"],
   [/^Not ready for offline\. Missing: (.+)\. Upload these files to GitHub, then open the app online twice\.$/, "Pas prêt pour le hors-ligne. Fichiers manquants : $1. Envoyez-les sur GitHub, puis ouvrez l'app en ligne deux fois."],
   [/^Date not understood\. Use (.+)\.$/, "Date non comprise. Utilisez $1."],
   [/^Started (.+) · (.+) so far$/, "Commencé à $1 · $2 jusqu'ici"],
@@ -1698,13 +1702,25 @@ E("file").onchange = function (ev) {
 /* The calendar button (date picker) and the text field edit the same date.
    Pick a date -> it is written in the text field in your chosen format.
    Type a valid date -> the picker jumps to it. Save always reads the text field. */
-document.getElementById("fdp").onchange = function () {
-  if (this.value) document.getElementById("fd").value = fmt(dt(this.value), true);
-  document.getElementById("ferr").textContent = "";
-};
+var pickSeen = ""; // last picker value already copied into the text field
+function takePick() {
+  var p = document.getElementById("fdp").value;
+  if (p && p !== pickSeen) {
+    pickSeen = p;
+    document.getElementById("fd").value = fmt(dt(p), true);
+    document.getElementById("ferr").textContent = "";
+  }
+}
+["input", "change", "blur"].forEach(function (n) {
+  document.getElementById("fdp").addEventListener(n, takePick);
+});
+setInterval(takePick, 250); // safety net: some phones fire no event when the calendar closes
 document.getElementById("fd").oninput = function () {
   var d = parseD(this.value);
-  if (d) document.getElementById("fdp").value = d;
+  if (d) {
+    document.getElementById("fdp").value = d;
+    pickSeen = d;
+  }
 };
 
 function dph() {
@@ -1755,11 +1771,17 @@ render();
 setInterval(render, 30000);
 
 /* Offline check: asks the browser which files are saved for offline use and shows the result under the clock. */
+var APP_V = "10", VMIS = "";
+(function () {
+  var m = document.querySelector('meta[name="app-version"]');
+  if (m && m.content !== APP_V) VMIS = "Files out of sync: index.html v" + m.content + ", app.js v" + APP_V + ". Open the app online and reload twice.";
+})();
 function offlineCheck() {
   var el = E("off");
   if (!el) return;
+  if (VMIS) el.textContent = VMIS;
   if (!("serviceWorker" in navigator) || !window.caches) {
-    el.textContent = "Offline mode is not supported by this browser.";
+    if (!VMIS) el.textContent = "Offline mode is not supported by this browser.";
     return;
   }
   navigator.serviceWorker.ready
@@ -1773,7 +1795,7 @@ function offlineCheck() {
       var need = ["app.js", "style.css", "manifest.webmanifest", "lib/xlsx.full.min.js", "lib/jspdf.umd.min.js", "lib/jspdf.plugin.autotable.min.js"];
       var miss = need.filter(function (n) { return !urls.some(function (u) { return u.slice(-n.length) == n; }); });
       if (!urls.some(function (u) { return u.slice(-1) == "/" || u.slice(-10) == "index.html"; })) miss.unshift("index.html");
-      el.textContent = miss.length ? "Not ready for offline. Missing: " + miss.join(", ") + ". Upload these files to GitHub, then open the app online twice." : "Works offline ✓";
+      el.textContent = VMIS ? VMIS : miss.length ? "Not ready for offline. Missing: " + miss.join(", ") + ". Upload these files to GitHub, then open the app online twice." : "Works offline ✓ · v" + APP_V;
     })
     .catch(function () {});
 }
