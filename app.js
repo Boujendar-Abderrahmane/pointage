@@ -433,6 +433,7 @@ function sheet(x) {
       : "";
   document.getElementById("stitle").textContent = x ? "Edit shift" : "Add a shift";
   document.getElementById("fd").value = fmt(dt(x ? x.d : iso(now())), true);
+  document.getElementById("fdp").value = x ? x.d : iso(now());
   document.getElementById("fd").placeholder = dph();
   document.getElementById("ferr").textContent = "";
   document.getElementById("fs").value = x ? x.s : "09:00";
@@ -1694,6 +1695,18 @@ E("file").onchange = function (ev) {
    18. TYPING A DATE IN YOUR FORMAT
    Placeholder text and parsing for the date field, following your Date format setting.
    ============================================================ */
+/* The calendar button (date picker) and the text field edit the same date.
+   Pick a date -> it is written in the text field in your chosen format.
+   Type a valid date -> the picker jumps to it. Save always reads the text field. */
+document.getElementById("fdp").onchange = function () {
+  if (this.value) document.getElementById("fd").value = fmt(dt(this.value), true);
+  document.getElementById("ferr").textContent = "";
+};
+document.getElementById("fd").oninput = function () {
+  var d = parseD(this.value);
+  if (d) document.getElementById("fdp").value = d;
+};
+
 function dph() {
   var f = CF.df,
     fr = LANG == "fr";
