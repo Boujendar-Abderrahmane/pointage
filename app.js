@@ -1771,7 +1771,14 @@ render();
 setInterval(render, 30000);
 
 /* Offline check: asks the browser which files are saved for offline use and shows the result under the clock. */
-var APP_V = "10", VMIS = "";
+/* Register the service worker: this is what saves the app on the phone so it opens with no internet. */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  });
+}
+
+var APP_V = "11", VMIS = "";
 (function () {
   var m = document.querySelector('meta[name="app-version"]');
   if (m && m.content !== APP_V) VMIS = "Files out of sync: index.html v" + m.content + ", app.js v" + APP_V + ". Open the app online and reload twice.";

@@ -1,6 +1,6 @@
 /* Service worker: keeps the app on the phone so it opens with no internet.
-   Change V (pointages-v10 -> v8 ...) every time you change any file, so phones refresh their copy. */
-var V = "pointages-v10";
+   Change V (pointages-v11 -> pointages-v12 ...) every time you change any file, so phones refresh their copy. */
+var V = "pointages-v11";
 var CORE = ["./", "index.html", "style.css", "app.js", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 var LIBS = ["lib/xlsx.full.min.js", "lib/jspdf.umd.min.js", "lib/jspdf.plugin.autotable.min.js"];
 
